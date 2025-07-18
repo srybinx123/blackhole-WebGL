@@ -1,0 +1,6 @@
+# ignoring test files
+js/test.js
+assets/skybox_test/
+
+# ignoring old files
+main.js
