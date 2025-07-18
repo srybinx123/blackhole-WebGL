@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackhole Wallpaper</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 250px;
+            height: 100vh;
+            background-color: rgba(51, 51, 51, 0.9);
+            color: white;
+            transition: width 0.3s;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+        }
+
+        .toggle-sidebar {
+            background-color: rgba(85, 85, 85, 0.8);
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-sidebar:hover {
+            background-color: rgba(100, 100, 100, 0.8);
+        }
+
+        .show-sidebar {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(85, 85, 85, 0.8);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            border-radius: 4px;
+        }
+
+        .show-sidebar:hover {
+            background-color: rgba(100, 100, 100, 0.8);
+        }
+
+        .sidebar.collapsed + .show-sidebar {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .control-panel {
+            padding: 20px;
+            height: calc(100vh - 50px); /* 减去按钮高度 */
+            overflow-y: auto; /* 添加垂直滚动条 */
+            scrollbar-width: thin; /* 细滚动条 */
+            scrollbar-color: rgba(255, 255, 255, 0.5) rgba(51, 51, 51, 0); /* 滚动条颜色 */
+        }
+
+        /* 自定义滚动条样式 */
+        .control-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .control-panel::-webkit-scrollbar-track {
+            background: rgba(51, 51, 51, 0);
+        }
+        
+        .control-panel::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+        }
+
+        .control {
+            margin-bottom: 15px;
+        }
+
+        .control label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-value {
+            min-width: 30px;
+            text-align: right;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="checkbox"] {
+            transform: scale(1.2);
+            margin-right: 8px;
+        }
+
+        #canvas {
+            display: block;
+            /* background: red; */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar" id="sidebar">
+        <button class="toggle-sidebar" id="toggle-sidebar">隐藏</button>
+        <div class="control-panel">
+            <div class="control">
+                <label for="renderBlackHole">是否渲染黑洞</label>
+                <input type="checkbox" id="renderBlackHole" checked>
+            </div>
+            <div class="control">
+                <label for="gravitationalLensing">启用引力透镜</label>
+                <input type="checkbox" id="gravitationalLensing" checked>
+            </div>
+            <div class="control">
+                <label for="fovScale">视野大小</label>
+                <div class="slide-container">
+                    <input type="range" id="fovScale" min="0.5" max="4.0" step="0.1" value="1.0">
+                    <span class="slider-value" id="fovScaleValue">1.0</span>
+                </div>
+            </div>
+            <div class="control">
+                <label for="mouseControl">启用鼠标控制</label>
+                <input type="checkbox" id="mouseControl" checked>
+            </div>
+            <div class="control">
+                <label for="cameraRoll">相机角度</label>
+                <div class="slide-container">
+                    <input type="range" id="cameraRoll" min="-180.0" max="180.0" step="0.1" value="0.0">
+                    <span class="slider-value" id="cameraRollValue">0.0</span>
+                </div>
+            </div>
+            <div class="control">
+                <label for="frontView">启用正视角</label>
+                <input type="checkbox" id="frontView" checked>
+            </div>
+            <div class="control">
+                <label for="topView">启用俯视角</label>
+                <input type="checkbox" id="topView" checked>
+            </div>
+            <div class="control">
+                <label for="adiskEnabled">启用吸积盘</label>
+                <input type="checkbox" id="adiskEnabled" checked>
+            </div>
+            <div class="control">
+                <label for="adiskParticle">吸积盘粒子效果</label>
+                <input type="checkbox" id="adiskParticle" checked>
+            </div>
+            <div class="control">
+                <label for="adiskHeight">吸积盘高度</label>
+                <div class="slide-container">
+                    <input type="range" id="adiskHeight" min="0.1" max="1.0" step="0.01" value="0.55">
+                    <span class="slider-value" id="adiskHeightValue">0.55</span>
+                </div>
+            </div>
+            <div class="control">
+                <label for="adiskLit">吸积盘亮度</label>
+                <div class="slide-container">
+                    <input type="range" id="adiskLit" min="0.0" max="1.0" step="0.01" value="0.25">
+                    <span class="slider-value" id="adiskLitValue">0.25</span>
+                </div>
+            </div>
+            <div class="control">
+                <label for="adiskDensityH">吸积盘密度衰减（水平）</label>
+                <div class="slide-container">
+                    <input type="range" id="adiskDensityH" min="1.0" max="8.0" step="0.1" value="4.0">
+                    <span class="slider-value" id="adiskDensityHValue">4.0</span>
+                </div>
+            </div>
+            <div class="control">
+                <label for="adiskDensityV">吸积盘密度衰减（垂直）</label>
+                <div class="slide-container">
+                    <input type="range" id="adiskDensityV" min="1.0" max="4.0" step="0.1" value="2.0">
+                    <span class="slider-value" id="adiskDensityVValue">2.0</span>
+                </div>
+            </div>
+            <div class="control">
+                <label for="adiskNoiseScale">噪声强度</label>
+                <div class="slide-container">
+                    <input type="range" id="adiskNoiseScale" min="0.1" max="4.0" step="0.1" value="0.8">
+                    <span class="slider-value" id="adiskNoiseScaleValue">0.8</span>
+                </div>
+            </div>
+            <div class="control">
+                <label for="adiskSpeed">吸积盘旋转速度</label>
+                <div class="slide-container">
+                    <input type="range" id="adiskSpeed" min="0.1" max="2.0" step="0.1" value="0.5">
+                    <span class="slider-value" id="adiskSpeedValue">0.5</span>
+                </div>
+            </div>
+            <div class="control">
+                <label for="bloomIterations">bloom等级</label>
+                <div class="slide-container">
+                    <input type="range" id="bloomIterations" min="1" max="8" step="1" value="8">
+                    <span class="slider-value" id="bloomIterationsValue">8</span>
+                </div>
+            </div>
+            <div class="control">
+                <label for="bloomStrength">bloom强度</label>
+                <div class="slide-container">
+                    <input type="range" id="bloomStrength" min="0.0" max="0.5" step="0.01" value="0.1">
+                    <span class="slider-value" id="bloomStrengthValue">0.1</span>
+                </div>
+            </div>
+            <div class="control">
+                <label for="tonemappingEnabled">启用色调映射</label>
+                <input type="checkbox" id="tonemappingEnabled" checked>
+            </div>
+            <div class="control">
+                <label for="gamma">gamma校正</label>
+                <div class="slide-container">
+                    <input type="range" id="gamma" min="1.0" max="8.0" step="0.1" value="2.5">
+                    <span class="slider-value" id="gammaValue">2.5</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <button class="show-sidebar" id="show-sidebar">显示控制面板</button>
+    <canvas id="canvas"></canvas>
+    <script src="js/main.js"></script>
+</body>
+
+</html>
