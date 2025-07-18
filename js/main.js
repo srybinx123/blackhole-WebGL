@@ -488,18 +488,6 @@ async function main() {
     const uniforms = new Uniforms();
     window.uniforms = uniforms;
 
-    // 侧边栏切换功能
-    const sidebar = document.getElementById('sidebar');
-    const toggleSidebar = document.getElementById('toggle-sidebar');
-    const showSidebar = document.getElementById('show-sidebar');
-
-    toggleSidebar.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-    });
-
-    showSidebar.addEventListener('click', () => {
-        sidebar.classList.remove('collapsed');
-    });
     // 注册鼠标位置
     window.addEventListener('mousemove', (event) => {
         const x = event.clientX / canvas.width;
