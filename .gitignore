@@ -4,3 +4,5 @@ assets/skybox_test/
 
 # ignoring old files
 main.js
+.history
+.history/*
