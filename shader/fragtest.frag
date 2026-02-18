@@ -1,6 +1,6 @@
 #version 100
 
-precision mediump float;
+precision highp float;
 
 const float PI = 3.14159265359;
 const float EPSILON = 0.0001;

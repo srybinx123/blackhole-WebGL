@@ -126,7 +126,7 @@ class Uniforms
             adiskParticle: 1.0,
             adiskHeight: 0.55,
             adiskLit: 0.25,
-            adiskDensityH: 4.0,
+            adiskDensityH: 2.5,
             adiskDensityV: 2.0,
             adiskNoiseScale: 0.8,
             adiskSpeed: 0.5,
@@ -139,7 +139,7 @@ class Uniforms
     }
     updateTime(startTime)
     {
-        this.settings.time = (Date.now() - startTime) / 1000.0;
+        this.settings.time = (performance.now() - startTime) / 1000.0;
     }
     updateMouse(x, y)
     {
@@ -484,7 +484,7 @@ async function main() {
     gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 
     // 时间跟踪
-    let startTime = Date.now();
+    let startTime = performance.now();
     const uniforms = new Uniforms();
     window.uniforms = uniforms;
 
