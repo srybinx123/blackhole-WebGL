@@ -13,6 +13,11 @@ if (!ext) {
     // return;
 }
 
+// 全局定义帧率锁变量
+let lastFrameTime = 0;
+const TARGET_FPS = 60;
+const FRAME_MIN_TIME = 1000 / TARGET_FPS;
+
 // 设置画布大小
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -115,7 +120,7 @@ class Uniforms
             time: 0,
             mouseX: 0.5,
             mouseY: 0.5,
-            fovScale: 1.0,
+            fovScale: 1.6,
             frontView: 0.0,
             topView: 0.0,
             cameraRoll: 0.0,
@@ -150,6 +155,59 @@ class Uniforms
     {
         this.settings.resolution = [width, height];
     }
+}
+
+// 设置渲染画质
+const PIXEL_RATIO = 0.75; // 基础缩放比例
+const MAX_RENDER_HEIGHT = 1080; // ★ 核心性能锁：不管屏幕多大，内部渲染高度绝不准超过 1080p！
+
+let mainFramebuffer, texBrightness, compositeFramebuffer;
+
+// 增加最大迭代次数的缓冲区和纹理
+const MAX_BLOOM_ITERATIONS = 8;
+let texDownsampled = [];
+let texUpsampled = [];
+
+
+// ==================== 2. 统一的渲染目标初始化 ====================
+function setupRenderTargets(gl, uniforms) {
+    // 1. CSS 永远铺满整个屏幕
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+
+    // 2. 计算安全的内部渲染分辨率
+    let targetHeight = window.innerHeight * PIXEL_RATIO;
+    // 强制锁死最高分辨率，防止 4K 全屏烧显卡
+    if (targetHeight > MAX_RENDER_HEIGHT) {
+        targetHeight = MAX_RENDER_HEIGHT;
+    }
+    // 根据安全高度反推宽度，保证长宽比不拉伸
+    let targetWidth = targetHeight * (window.innerWidth / window.innerHeight);
+
+    canvas.width = Math.floor(targetWidth);
+    canvas.height = Math.floor(targetHeight);
+
+    if (uniforms) {
+        uniforms.updateResolution(canvas.width, canvas.height);
+    }
+
+    // 3. 统一创建所有 FBO
+    mainFramebuffer = createFramebuffer(gl, canvas.width, canvas.height);
+    texBrightness = createFramebuffer(gl, canvas.width, canvas.height);
+    compositeFramebuffer = createFramebuffer(gl, canvas.width, canvas.height);
+
+    texDownsampled = [];
+    texUpsampled = [];
+    for (let i = 0; i < MAX_BLOOM_ITERATIONS; i++) {
+        let bw = Math.max(1, Math.floor(canvas.width / Math.pow(2, i + 1)));
+        let bh = Math.max(1, Math.floor(canvas.height / Math.pow(2, i + 1)));
+        texDownsampled.push(createFramebuffer(gl, bw, bh));
+        
+        let upW = Math.max(1, Math.floor(canvas.width / Math.pow(2, i)));
+        let upH = Math.max(1, Math.floor(canvas.height / Math.pow(2, i)));
+        texUpsampled.push(createFramebuffer(gl, upW, upH));
+    }
+    console.log(`Render Targets Resized. Internal Resolution: ${canvas.width}x${canvas.height}`);
 }
 
 // 加载立方体贴图
@@ -490,56 +548,75 @@ async function main() {
 
     // 注册鼠标位置
     window.addEventListener('mousemove', (event) => {
-        const x = event.clientX / canvas.width;
-        const y = event.clientY / canvas.height;
+        const x = event.clientX / window.innerWidth;
+        const y = event.clientY / window.innerHeight;
         uniforms.updateMouse(x, y);
     });
 
     window.addEventListener('resize', () => {
-        // 获取新画布大小
-        const newWidth = canvas.clientWidth;
-        const newHeight = canvas.clientHeight;
-        // 重置画布大小
-        {
-            canvas.width = newWidth;
-            canvas.height = newHeight;
-            uniforms.updateResolution(canvas.width, canvas.height);
-            mainFramebuffer = createFramebuffer(gl, canvas.width, canvas.height);
-            texBrightness = createFramebuffer(gl, canvas.width, canvas.height);
-            compositeFramebuffer = createFramebuffer(gl, canvas.width, canvas.height);
-            texDownsampled = [];
-            texUpsampled = [];
-            for (let i = 0; i < MAX_BLOOM_ITERATIONS; i++) {
-                texDownsampled.push(createFramebuffer(gl, canvas.width, canvas.height));
-                texUpsampled.push(createFramebuffer(gl, canvas.width, canvas.height));
-            }
-            console.log('Framebuffer resized to', canvas.width, canvas.height);
-        }
-    });
+        setupRenderTargets(gl, uniforms);
+    })
+
+    // window.addEventListener('resize', () => {
+    //     // 获取新画布大小
+    //     const newWidth = canvas.clientWidth;
+    //     const newHeight = canvas.clientHeight;
+    //     // 重置画布大小
+    //     {
+    //         canvas.width = newWidth;
+    //         canvas.height = newHeight;
+    //         uniforms.updateResolution(canvas.width, canvas.height);
+    //         mainFramebuffer = createFramebuffer(gl, canvas.width, canvas.height);
+    //         texBrightness = createFramebuffer(gl, canvas.width, canvas.height);
+    //         compositeFramebuffer = createFramebuffer(gl, canvas.width, canvas.height);
+    //         texDownsampled = [];
+    //         texUpsampled = [];
+    //         for (let i = 0; i < MAX_BLOOM_ITERATIONS; i++) {
+    //             let bw = Math.max(1, Math.floor(canvas.width / Math.pow(2, i + 1)));
+    //             let bh = Math.max(1, Math.floor(canvas.height / Math.pow(2, i + 1)));
+    //             // texDownsampled.push(createFramebuffer(gl, canvas.width, canvas.height));
+    //             texDownsampled.push(createFramebuffer(gl, bw, bh));
+
+    //             let upW = Math.max(1, Math.floor(canvas.width / Math.pow(2, i)));
+    //             let upH = Math.max(1, Math.floor(canvas.height / Math.pow(2, i)));
+    //             texUpsampled.push(createFramebuffer(gl, upW, upH));
+    //         }
+    //         console.log('Framebuffer resized to', canvas.width, canvas.height);
+    //     }
+    // });
+
 
     initControlPanel(uniforms);
     
     gl.disable(gl.BLEND);
     gl.disable(gl.DEPTH_TEST);
 
-    let mainFramebuffer = createFramebuffer(gl, canvas.width, canvas.height);
+    // let mainFramebuffer = createFramebuffer(gl, canvas.width, canvas.height);
 
-    let texBrightness = createFramebuffer(gl, canvas.width, canvas.height);
+    // let texBrightness = createFramebuffer(gl, canvas.width, canvas.height);
 
-    let compositeFramebuffer = createFramebuffer(gl, canvas.width, canvas.height);
+    // let compositeFramebuffer = createFramebuffer(gl, canvas.width, canvas.height);
 
-    // 增加最大迭代次数的缓冲区和纹理
-    const MAX_BLOOM_ITERATIONS = 8;
-    let texDownsampled = [];
-    let texUpsampled = [];
+    // // 增加最大迭代次数的缓冲区和纹理
+    // const MAX_BLOOM_ITERATIONS = 8;
+    // let texDownsampled = [];
+    // let texUpsampled = [];
 
-    for (let i = 0; i < MAX_BLOOM_ITERATIONS; i++) {
-        texDownsampled.push(createFramebuffer(gl, canvas.width, canvas.height));
-        texUpsampled.push(createFramebuffer(gl, canvas.width, canvas.height));
-    }
-
+    // for (let i = 0; i < MAX_BLOOM_ITERATIONS; i++) {
+    //     texDownsampled.push(createFramebuffer(gl, canvas.width, canvas.height));
+    //     texUpsampled.push(createFramebuffer(gl, canvas.width, canvas.height));
+    // }
+    setupRenderTargets(gl, uniforms);
+    // window.dispatchEvent(new Event('resize'));
     // 渲染循环
-    function render() {
+    function render(currentTime) {
+        requestAnimationFrame(render);
+        // 3. 锁帧计算逻辑
+        const deltaTime = currentTime - lastFrameTime;
+        if (deltaTime < FRAME_MIN_TIME) {
+            return; // 时间没到，直接抛弃这一帧
+        }
+        lastFrameTime = currentTime - (deltaTime % FRAME_MIN_TIME);
         // const elapsedTime = (Date.now() - startTime) / 1000.0;
         uniforms.updateTime(startTime);
 
@@ -601,6 +678,7 @@ async function main() {
 
             const resolution = [Math.max(1, Math.floor(canvas.width / Math.pow(2, level + 1))), Math.max(1, Math.floor(canvas.height / Math.pow(2, level + 1)))];
             gl.uniform2f(gl.getUniformLocation(bloomDownProgram,'resolution'), ...resolution);
+            gl.viewport(0, 0, resolution[0], resolution[1]);
 
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, level === 0 ? texBrightness.texture : texDownsampled[level - 1].texture);
@@ -615,6 +693,7 @@ async function main() {
             
             const resolution = [Math.max(1, Math.floor(canvas.width / Math.pow(2, level))), Math.max(1, Math.floor(canvas.height / Math.pow(2, level)))];
             gl.uniform2f(gl.getUniformLocation(bloomUpProgram,'resolution'), ...resolution);
+            gl.viewport(0, 0, resolution[0], resolution[1]);
             // 设置主纹理
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, level === uniforms.settings.bloomIterations - 1 
@@ -634,6 +713,7 @@ async function main() {
 
         // 合成Bloom效果
         gl.bindFramebuffer(gl.FRAMEBUFFER, compositeFramebuffer.framebuffer);
+        gl.viewport(0, 0, canvas.width, canvas.height);
         gl.useProgram(bloomCompProgram);
         gl.uniform1f(gl.getUniformLocation(bloomCompProgram, 'bloomStrength'), uniforms.settings.bloomStrength);
         gl.uniform1f(gl.getUniformLocation(bloomCompProgram, 'tone'), uniforms.settings.tone);
@@ -656,11 +736,10 @@ async function main() {
         gl.drawArrays(gl.TRIANGLES, 0, 6);
 
         // 继续渲染循环
-        requestAnimationFrame(render);
     }
 
     // 开始渲染
-    render();
+    requestAnimationFrame(render);
 }
 
 // 启动应用

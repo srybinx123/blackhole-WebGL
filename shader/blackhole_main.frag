@@ -405,7 +405,7 @@ void adiskColor(vec3 pos, vec3 dir, inout vec3 color, inout float alpha, vec2 uv
   float noise2 = 1.0;
 
   float noise = 1.0;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 3; i++) {
     // float t1 = mod(sphericalCoord.y, 2.0 * PI);
     // // float t2 = 2.0 * PI - t1;
     // float t2 = mod(sphericalCoord.y + PI, 2.0 * PI);
@@ -586,14 +586,14 @@ vec3 traceColor(vec3 pos, vec3 dir, vec2 uv) {
   float alpha = 1.0;
   vec3 oripos = pos;
 
-  float STEP_SIZE = 0.1;
+  float STEP_SIZE = 0.2;
   dir *= STEP_SIZE;
 
   // Initial values
   vec3 h = cross(pos, dir);
   float h2 = dot(h, h);
 
-  for (int i = 0; i < 300; i++) {
+  for (int i = 0; i < 150; i++) {
     if (renderBlackHole > 0.5) {
       // If gravatational lensing is applied
       if (gravatationalLensing > 0.5) {
